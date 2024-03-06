@@ -1,46 +1,25 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.IO;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 public static class Logging
 {
-    private static readonly string logFilePath = "ProducerConsumerLog.txt";
-    private static readonly ConcurrentQueue<string> logMessages = new ConcurrentQueue<string>();
-    private static readonly AutoResetEvent logSignal = new AutoResetEvent(false);
-    private static readonly Thread logThread;
-    private static bool isLoggingEnabled = true;
+    private static readonly string logFilePath = "ProducerConsumerLogAsync.txt";
+    private static readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
-    static Logging()
+    public static async Task LogAsync(string message)
     {
-        logThread = new Thread(LogMessageHandler)
+        await semaphore.WaitAsync();
+        try
         {
-            IsBackground = true
-        };
-        logThread.Start();
-    }
-
-    public static void Log(string message)
-    {
-        logMessages.Enqueue($"{DateTime.Now}: {message}\n");
-        logSignal.Set();
-    }
-
-    private static void LogMessageHandler()
-    {
-        while (isLoggingEnabled)
-        {
-            logSignal.WaitOne();
-            while (logMessages.TryDequeue(out string message))
-            {
-                File.AppendAllText(logFilePath, message);
-            }
+            var logMessage = $"{DateTime.Now}: {message}\n";
+            await File.AppendAllTextAsync(logFilePath, logMessage, Encoding.UTF8);
         }
-    }
-
-    public static void StopLogging()
-    {
-        isLoggingEnabled = false;
-        logSignal.Set();
+        finally
+        {
+            semaphore.Release();
+        }
     }
 }

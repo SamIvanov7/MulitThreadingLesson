@@ -1,29 +1,26 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
-public class Consumer
+public class AsyncConsumer
 {
-    private readonly Buffer<int> buffer;
-    private readonly int delayMilliseconds;
+    private readonly AsyncBuffer<int> buffer;
     private readonly CancellationToken cancellationToken;
 
-    public Consumer(Buffer<int> buffer, CancellationToken cancellationToken, int delayMilliseconds = 1500)
+    public AsyncConsumer(AsyncBuffer<int> buffer, CancellationToken cancellationToken)
     {
         this.buffer = buffer;
-        this.delayMilliseconds = delayMilliseconds;
         this.cancellationToken = cancellationToken;
     }
 
-    public void Consume()
+    public async Task ConsumeAsync()
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (buffer.TryTake(out int item))
-            {
-                Console.WriteLine($"Consumed: {item}");
-                Logging.Log($"Consumed: {item}");
-                Thread.Sleep(delayMilliseconds);
-            }
+            int item = await buffer.TakeAsync();
+            Console.WriteLine($"Consumed: {item}");
+            await Logging.LogAsync($"Consumed: {item}");
+            await Task.Delay(1500, cancellationToken);
         }
     }
 }

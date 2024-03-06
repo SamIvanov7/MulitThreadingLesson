@@ -1,31 +1,32 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
-public class Producer
+public class AsyncProducer
 {
-    private readonly Buffer<int> buffer;
-    private readonly int delayMilliseconds;
-    private readonly Random random = new();
+    private readonly AsyncBuffer<int> buffer;
     private readonly CancellationToken cancellationToken;
 
-    public Producer(Buffer<int> buffer, CancellationToken cancellationToken, int delayMilliseconds = 500)
+    public AsyncProducer(AsyncBuffer<int> buffer, CancellationToken cancellationToken)
     {
         this.buffer = buffer;
-        this.delayMilliseconds = delayMilliseconds;
         this.cancellationToken = cancellationToken;
     }
 
-    public void Produce()
+    public async Task ProduceAsync()
     {
+        var random = new Random();
         while (!cancellationToken.IsCancellationRequested)
         {
-            int newItem = random.Next(1000);
-            if (buffer.TryAdd(newItem))
+            int newItem = random.Next(100);
+            if (await buffer.TryAddAsync(newItem))
             {
                 Console.WriteLine($"Produced: {newItem}");
-                Logging.Log($"Produced: {newItem}");
-                Thread.Sleep(delayMilliseconds);
+                await Logging.LogAsync($"Produced: {newItem}");
             }
+            await Task.Delay(1000, cancellationToken);
         }
     }
+
+
 }

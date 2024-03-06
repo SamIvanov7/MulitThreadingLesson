@@ -1,41 +1,49 @@
 ﻿using System.Collections.Generic;
-using System.Threading;
+using System.Threading.Tasks;
 
-public class Buffer<T>
+public class AsyncBuffer<T>
 {
     private readonly Queue<T> queue = new();
     private readonly int maxSize;
-    private readonly object lockObject = new();
+    private readonly SemaphoreSlim semaphore = new(1, 1);
 
-    public Buffer(int maxSize = 10)
+    public AsyncBuffer(int maxSize = 10)
     {
         this.maxSize = maxSize;
     }
 
-    public bool TryAdd(T item)
+    public async Task<bool> TryAddAsync(T item)
     {
-        lock (lockObject)
+        await semaphore.WaitAsync();
+        try
         {
             if (queue.Count < maxSize)
             {
                 queue.Enqueue(item);
-                Monitor.Pulse(lockObject); // Notify a waiting consumer
                 return true;
             }
             return false;
         }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
-    public bool TryTake(out T item)
+    public async Task<T> TakeAsync()
     {
-        lock (lockObject)
+        await semaphore.WaitAsync();
+        try
         {
             while (queue.Count == 0)
             {
-                Monitor.Wait(lockObject); // Wait for an item to be added
+                await Task.Delay(50);
             }
-            item = queue.Dequeue();
-            return true;
+            return queue.Dequeue();
+        }
+        finally
+        {
+            semaphore.Release();
         }
     }
 }
